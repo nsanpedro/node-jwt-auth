@@ -2,12 +2,22 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 const handleErrors = (error) => {
+  const alreadyRegistered = error.code === 11000;
+
   let errorData = {
     email: '',
     password: '',
   };
 
-  const alreadyRegistered = error.code === 11000;
+  // incorrect email
+  if (error.message === 'incorrect email') {
+    errorData.email = 'That email is not registered';
+  }
+
+  // incorrect password
+  if (error.message === 'incorrect password') {
+    errorData.password = 'That password is incorrect';
+  }
 
   if (alreadyRegistered) {
     errorData.email = 'that email is already registered';
@@ -57,8 +67,11 @@ module.exports.login_post = async (req, res) => {
 
   try {
     const userData = await User.login(email, password);
+    const jwtToken = createToken(userData?._id);
+    res.cookie('jwt', jwtToken, { httpOnly: true, maxAge: maxAge * 1000 });
     res.status(200).json({ user: userData?._id });
-  } catch (err) {
-    res.status(400).json({});
+  } catch (error) {
+    const errors = handleErrors(error);
+    res.status(400).json({ errors });
   }
 };
